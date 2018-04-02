@@ -54,10 +54,18 @@
 	</build>
 
 
-  <scm>
+    <scm>
 		<url>https://github.com/lookify/readability</url>
-		<connection>scm:git:git://github.com/lookify/readability.git</connection>
+		<connection>scm:git:https://github.com/lookify/readability.git</connection>
 		<developerConnection>scm:git:git@github.com/lookify/readability.git</developerConnection>
-  </scm>
-	
+	    <tag>HEAD</tag>
+	</scm>
+	<developers>
+        <developer>
+            <name>Kirils Mensikovs</name>
+            <organization>Vertex IT SIA</organization>
+            <organizationUrl>http://kiril.me</organizationUrl>
+            <url>https://github.com/kiril-me/</url>
+        </developer>
+    </developers>
 </project>
