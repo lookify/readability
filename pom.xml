@@ -53,4 +53,11 @@
 		</pluginManagement>
 	</build>
 
+
+  <scm>
+		<url>https://github.com/lookify/readability</url>
+		<connection>scm:git:git://github.com/lookify/readability.git</connection>
+		<developerConnection>scm:git:git@github.com/lookify/readability.git</developerConnection>
+  </scm>
+	
 </project>
