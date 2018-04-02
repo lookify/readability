@@ -84,7 +84,6 @@ public class Analyze {
 		final Elements bodies = doc.getElementsByTag("body");
 		if (!bodies.isEmpty()) {
 			final Element body = bodies.first();
-			// System.out.println(body.html());
 			visitor.traverse(body);
 
 			final Map<Element, CandidateScore> candidates = visitor.getCandidates();
@@ -93,38 +92,12 @@ public class Analyze {
 				return Double.compare(c2.getScore(), c1.getScore());
 			});
 
-			// final String original = body.html();
 			while (true) {
-
-				// double sum = 0;
-				// for (CandidateScore candidate : sortedCandidates) {
-				// sum += candidate.getScore();
-				// }
-				// double mid = sum / sortedCandidates.size();
-				//
-				// int half = sortedCandidates.size() / 2;
-				// double median = sortedCandidates.size() % 2 == 0
-				// ? (sortedCandidates.get(half).getScore() +
-				// sortedCandidates.get(half + 1).getScore()) / 2
-				// : sortedCandidates.get(half).getScore();
-
-				// final List<CandidateScore> topCandidates =
-				// filterTopCandidates(candidates);
-
 				final CandidateScore topCandidate = selectBestCandidate(candidates, sortedCandidates, body);
-				final Cleaner cleaner = new Cleaner(score, flag);
-
 				final Element articaleContent = makeArticleContent(topCandidate, candidates);
+				final Cleaner cleaner = new Cleaner(score, flag);
 				cleaner.prepArticle(meta, articaleContent);
 
-				if (curPageNum == 1) {
-					// if (neededToCreateTopCandidate) {
-					// TODO
-					// } else {
-					// TODO
-					// }
-				}
-				// String articleDir = null;
 				if (articaleContent.text().length() < wordThreshold) {
 					final List<CandidateScore> listCandidates = selectListCandidates(sortedCandidates);
 					if (listCandidates == null) {
@@ -149,22 +122,18 @@ public class Analyze {
 						}
 					} else {
 						processItems(visitor, uri, cleaner, listCandidates, candidates, page);
-
 						break;
 					}
 				} else {
 					postProcessContent(uri, articaleContent);
 					addBlock(visitor, page, topCandidate, articaleContent);
 
-
 					final List<CandidateScore> listCandidates = selectListCandidates(sortedCandidates);
 					if (listCandidates != null) {
 						processItems(visitor, uri, cleaner, listCandidates, candidates, page);
 					}
-
 					break;
 				}
-
 			}
 		}
 
@@ -210,11 +179,20 @@ public class Analyze {
 	}
 	
 	private Element cleanContent(Element content, Whitelist whiltelist) {
-		Document dirt = Document.createShell("");
+		final Document dirt = Document.createShell("");
 		dirt.body().appendChild(content);
-		org.jsoup.safety.Cleaner cleaner = new org.jsoup.safety.Cleaner(whiltelist);
-        Document clean = cleaner.clean(dirt);
-		return clean.body();
+		final org.jsoup.safety.Cleaner cleaner = new org.jsoup.safety.Cleaner(whiltelist);
+        final Document clean = cleaner.clean(dirt);
+        final Elements els = clean.body().children();
+        if(els.size() == 1) {
+        		return els.first();
+        } else {
+        		final Element newContent = new Element(Tag.valueOf("div"), "");
+        		for(Element el : els) {
+        			newContent.appendChild(el);
+        		}
+        		return newContent;
+        }
 	}
 	
 	private void processItems(final ScoreVisitor2 visitor, final URI uri, final Cleaner cleaner, final List<CandidateScore> listCandidates,
@@ -225,13 +203,6 @@ public class Analyze {
 			if (itemContent.text().length() >= minConent ) {
 				postProcessContent(uri, itemContent);
 				addBlock(visitor, page, item, itemContent);
-				
-//				final Block block = new Block();
-//				block.setAuthor(item.getAuthor());
-//				block.setDate(item.getDate());
-//				block.setContent(itemContent.html());
-//				block.setDirection(item.getDirection());
-//				page.addBlock(block);
 			}
 		}
 	}
@@ -508,34 +479,8 @@ public class Analyze {
 				// sl -= 1;
 			}
 		}
-
-		Element cleanArticle = cleanContent(articaleContent, Whitelist.relaxed());
-		return cleanArticle;
+		return articaleContent;
 	}
-
-//	private List<CandidateScore> filterTopCandidates(Map<Element, Double> candidates) {
-//		LinkedList<CandidateScore> topCandidates = new LinkedList<>();
-//		for (Map.Entry<Element, Double> entry : candidates.entrySet()) {
-//			Element candidate = entry.getKey();
-//			double score = entry.getValue();
-//
-//			for (int t = 0; t < nbTopCandidates; t++) {
-//				CandidateScore topCandidate = t < topCandidates.size() ? topCandidates.get(t) : null;
-//				if (topCandidate == null || score > topCandidate.getScore()) {
-//					CandidateScore elementScore = new CandidateScore(candidate, score);
-//					topCandidates.addFirst(elementScore);
-//
-//					if (topCandidates.size() > nbTopCandidates) {
-//						topCandidates.pollLast();
-//					}
-//
-//					break;
-//				}
-//			}
-//		}
-//		return topCandidates;
-//	}
-
 	private CandidateScore selectBestCandidate(final Map<Element, CandidateScore> candidates,
 			final List<CandidateScore> topCandidates, final Element body) {
 		CandidateScore topCandidate = null;
@@ -543,11 +488,8 @@ public class Analyze {
 			topCandidate = topCandidates.get(0);
 		}
 
-		boolean neededToCreateTopCandidate = false;
-
 		if (topCandidate == null || "body".equals(topCandidate.getElement().tagName())) {
 			topCandidate = new CandidateScore(new Element(Tag.valueOf("div"), ""), 0);
-			neededToCreateTopCandidate = true;
 
 			for (Element child : body.children()) {
 				topCandidate.getElement().appendChild(child);

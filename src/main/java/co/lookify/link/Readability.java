@@ -60,37 +60,6 @@ public class Readability {
 			"\\/\\/(www\\.)?(dailymotion|youtube|youtube-nocookie|player\\.vimeo)\\.com", Pattern.CASE_INSENSITIVE);
 
 	private static final Pattern HAS_CONTENT = Pattern.compile("\\S$");
-	//
-	// private final static Pattern[] REGEXPS = new Pattern[] {
-	// /* unlikelyCandidates */
-	// UNLIKELY_CANDIDATES,
-	// /* okMaybeItsACandidate */
-	// OK_MAYBE_ITS_CANDIDATE,
-	// /* positive */
-	// POSITIVE,
-	// /* negative */
-	// NEGATIVE,
-	// /* extraneous */
-	// Pattern.compile("print|archive|comment|discuss|e[\\-]?mail|share|reply|all|login|sign|single|utility",
-	// Pattern.CASE_INSENSITIVE),
-	// /* byline */
-	// BYLINE,
-	// /* replaceFonts */
-	// Pattern.compile("<(\\/?)font[^>]*>", Pattern.CASE_INSENSITIVE |
-	// Pattern.MULTILINE),
-	// /* normalize */
-	// NORMALIZE,
-	// /* videos */
-	// VIDEOS,
-	// /* nextLink */
-	// Pattern.compile("(next|weiter|continue|>([^\\|]|$)|»([^\\|]|$))",
-	// Pattern.CASE_INSENSITIVE),
-	// /* prevLink */
-	// Pattern.compile("(prev|earl|old|new|<|«)", Pattern.CASE_INSENSITIVE),
-	// /* whitespace */
-	// WHITESPACE,
-	// /* hasContent */
-	// HAS_CONTENT, };
 
 	private static final List<String> DIV_TO_P_ELEMS = Arrays
 			.asList(new String[] { "a", "blockquote", "dl", "div", "img", "ol", "p", "pre", "table", "ul", "select" });

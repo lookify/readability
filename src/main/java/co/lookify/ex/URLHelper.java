@@ -12,8 +12,7 @@ public final class URLHelper {
 	}
 
 	public static String toAbsoluteURI(URI uri, String url) {
-		// uri.isAbsolute()) { //
-		if (ABSOLUTE_URI.matcher(url).matches()) {
+		if (ABSOLUTE_URI.matcher(url).find()) {
 			return url;
 		}
 		if (url.length() >= 2 && "//".equals(url.substring(0, 2))) {
