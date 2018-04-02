@@ -1,12 +1,17 @@
 package co.lookify.structure;
 
 import java.util.Date;
+import java.util.Set;
+
+import org.jsoup.nodes.Element;
 
 public class Block {
 
 	private String id;
 
 	private String header;
+
+	private Element el;
 
 	private String content;
 
@@ -15,6 +20,16 @@ public class Block {
 	private Date date;
 
 	private String direction;
+
+	private Set<String> tags;
+
+	public Set<String> getTags() {
+		return tags;
+	}
+
+	public void setTags(Set<String> tags) {
+		this.tags = tags;
+	}
 
 	public String getId() {
 		return id;
@@ -62,6 +77,14 @@ public class Block {
 
 	public void setDirection(String direction) {
 		this.direction = direction;
+	}
+
+	public Element getEl() {
+		return el;
+	}
+
+	public void setEl(Element el) {
+		this.el = el;
 	}
 
 }

@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 
 import org.jsoup.nodes.Attribute;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
 
 import co.lookify.link.Flag;
@@ -85,7 +86,8 @@ public class Cleaner {
 		cleanConditionally(articaleContent, "ul");
 		cleanConditionally(articaleContent, "div");
 
-		removeNodes(articaleContent.getElementsByTag("p"), (paragraph) -> {
+		Elements pElements = articaleContent.getElementsByTag("p");
+		removeNodes(pElements, (paragraph) -> {
 			int imgCount = paragraph.getElementsByTag("img").size();
 			int embedCount = paragraph.getElementsByTag("embed").size();
 			int objectCount = paragraph.getElementsByTag("object").size();
@@ -93,6 +95,24 @@ public class Cleaner {
 			int totalCount = imgCount + embedCount + objectCount + iframeCount;
 			return totalCount == 0 && !paragraph.hasText();
 		});
+		
+		removeNested(pElements, "span");
+	}
+	
+	private void removeNested(Elements elements, String tag) {
+		for(Element element : elements) {
+			Elements childs = element.children();
+			if(childs.size() == 1) {
+				Element el = childs.get(0);
+				if(tag.equals(el.tagName())) {
+					List<Node> nodes = el.childNodesCopy();
+					el.remove();
+					for(Node add : nodes) {
+						element.appendChild(add);
+					}
+				}
+			}
+		}
 	}
 
 	private void markDataTables(final Element node) {

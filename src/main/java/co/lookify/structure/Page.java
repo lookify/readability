@@ -48,6 +48,17 @@ public class Page {
 		return null;
 	}
 
+	public String getContent() {
+		StringBuilder builder = new StringBuilder();
+		for (Block block : blocks) {
+			if (builder.length() > 0) {
+				builder.append(" ");
+			}
+			builder.append(block.getContent());
+		}
+		return builder.toString();
+	}
+
 	public String getTitle() {
 		return meta == null ? null : meta.getTitle();
 	}

@@ -1,18 +1,20 @@
 package co.lookify.ex;
 
 import java.net.URI;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.jsoup.nodes.Comment;
@@ -41,10 +43,12 @@ public class ScoreVisitor2 {
 
 	private static final Pattern HAS_CONTENT = Pattern.compile("\\S$");
 
-	private static final Pattern TIMESTAMP = Pattern.compile("timestamp");
+	private static final Pattern TIMESTAMP = Pattern.compile("timestamp|date");
 
 	private static final Pattern AUTHOR = Pattern.compile("byline|author|dateline|writtenby|p-author",
 			Pattern.CASE_INSENSITIVE);
+
+	private static final Pattern TAG = Pattern.compile("category", Pattern.CASE_INSENSITIVE);
 
 	private static final Pattern UNLIKELY_CANDIDATES = Pattern.compile(
 			"banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|foot|header|legends|menu|modal|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote",
@@ -59,8 +63,7 @@ public class ScoreVisitor2 {
 
 	private Map<Element, CandidateScore> candidates;
 
-	// private StringBuilder text;
-	// private LinkedList<Integer> textLength;
+	private List<DateTimeFormatter> dateFormats;
 
 	private LinkedList<Element> ancestors;
 
@@ -82,6 +85,10 @@ public class ScoreVisitor2 {
 
 	private String title;
 
+	private Set<String> tags;
+	
+	private ZoneId zoneId = ZoneId.systemDefault();
+
 	private static class State {
 		Person author;
 
@@ -90,6 +97,8 @@ public class ScoreVisitor2 {
 		String direction;
 
 		String title;
+
+		Set<String> tags;
 	}
 
 	public ScoreVisitor2(final URI uri, final Score score, final Flag flag) {
@@ -103,6 +112,13 @@ public class ScoreVisitor2 {
 		unlikelyCandidates = new HashMap<>();
 
 		states = new LinkedList<>();
+		
+		dateFormats = new ArrayList<>();
+		
+		dateFormats.add(DateTimeFormatter.ISO_DATE);
+		dateFormats.add(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+		dateFormats.add(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+		dateFormats.add(DATE_TIME);
 	}
 
 	public void traverse(final Node root) {
@@ -120,6 +136,16 @@ public class ScoreVisitor2 {
 				}
 			}
 		}
+	}
+	
+	public List<Element> getRemovedElements(Element el) {
+		List<Element> list = new ArrayList<>();
+		for (Map.Entry<Element, Element> entry : unlikelyCandidates.entrySet()) {
+			if(el == entry.getValue()) {
+				list.add(entry.getKey());
+			}
+		}
+		return list;
 	}
 
 	// private Node nextEnd(Node node) {
@@ -164,11 +190,9 @@ public class ScoreVisitor2 {
 			} else if (isAuthor(el, matchString, text)) {
 				author = extractAuthor(el);
 				date = extractDate(el);
-
-				// if (date != null) {
-				// dates.add(date);
-				// }
-
+				return removeAndGetNext(node);
+			} else if (isTag(el, matchString, text)) {
+				tags = fillTags(el, text, tags);
 				return removeAndGetNext(node);
 			} else if ("time".equals(tag) && TIMESTAMP.matcher(matchString).find()) {
 				date = extractDate(el);
@@ -181,7 +205,7 @@ public class ScoreVisitor2 {
 					&& !OK_MAYBE_ITS_CANDIDATE.matcher(matchString).find() && !"body".equals(tag) && !"a".equals(tag)) {
 				next = next(node);
 
-				Element parent = el.parent();
+				final Element parent = el.parent();
 				unlikelyCandidates.put(el, parent);
 
 				node.remove();
@@ -193,7 +217,7 @@ public class ScoreVisitor2 {
 					// return head(next);
 				} else if ("div".equals(tag)) {
 					final Elements childs = el.children();
-					if (hasSinglePInsideElement(el, childs)) {
+					if (hasSingleTagInsideElement("p", el, childs)) {
 						Element child = childs.first();
 						node.replaceWith(child);
 					} else if (!hasChildBlockElement(childs)) {
@@ -225,6 +249,18 @@ public class ScoreVisitor2 {
 		return next;
 	}
 
+	private Set<String> fillTags(Element el, String text, Set<String> tags) {
+		if (tags == null) {
+			tags = new HashSet<>();
+		}
+		tags.add(text);
+		return tags;
+	}
+
+	private boolean isTag(Element el, String matchString, String text) {
+		return TAG.matcher(matchString).find() && text.length() < 100;
+	}
+
 	private String getHostFromUrl(String url) {
 		if (url.startsWith("http://")) {
 			return url.substring("http://".length(), url.indexOf('/', "http://".length()));
@@ -247,18 +283,9 @@ public class ScoreVisitor2 {
 					datetime = node.text();
 				}
 				if (datetime.length() > 0) {
-					try {
-						ZoneId zone = ZoneId.systemDefault();
-						if (datetime.contains(":")) {
-							LocalDateTime parsedTime = LocalDateTime.parse(datetime, DATE_TIME);
-							date = Date.from(parsedTime.atZone(zone).toInstant());
-						} else {
-							LocalDate parsedDate = LocalDate.parse(datetime);
-							date = Date.from(parsedDate.atStartOfDay(zone).toInstant());
-						}
-						break;
-					} catch (Exception e) {
-						// no errors
+					date = convertToDate(datetime);
+					if(date != null) {
+						return date;
 					}
 				}
 			}
@@ -282,6 +309,18 @@ public class ScoreVisitor2 {
 			}
 		}
 		return date;
+	}
+
+	private Date convertToDate(String datetime) {
+		for(DateTimeFormatter formatter : dateFormats) {
+			try {
+				LocalDateTime parsedTime = LocalDateTime.parse(datetime, formatter);
+				return Date.from(parsedTime.atZone(zoneId).toInstant());
+			} catch (Exception e) {
+				// no errors
+			}
+		}
+		return null;
 	}
 
 	private String getOnlyUppercase(int start, String txt) {
@@ -424,12 +463,16 @@ public class ScoreVisitor2 {
 			date = date == null ? state.date : date;
 			direction = direction == null ? state.direction : direction;
 			title = title == null ? state.title : title;
+			tags = tags == null ? state.tags : tags;
 
 			node = tail(node.parent());
 			return node;
 		}
 
-		final State prevState = states.getLast();
+		State prevState = null;
+		if (!states.isEmpty()) {
+			prevState = states.getLast();
+		}
 
 		// save state
 		final State state = new State();
@@ -437,12 +480,16 @@ public class ScoreVisitor2 {
 		state.date = date;
 		state.direction = direction;
 		state.title = title;
+		state.tags = tags;
 		states.addLast(state);
 
-		author = prevState.author;
-		date = prevState.date;
-		direction = prevState.direction;
-		title = prevState.title;
+		if (prevState != null) {
+			author = prevState.author;
+			date = prevState.date;
+			direction = prevState.direction;
+			title = prevState.title;
+			tags = prevState.tags;
+		}
 
 		// // save state
 		// final State state = new State();
@@ -516,6 +563,10 @@ public class ScoreVisitor2 {
 		if (title != null && candidate.getTitle() == null) {
 			candidate.setTitle(title);
 		}
+
+		if (tags != null && candidate.getTags() == null) {
+			candidate.setTags(tags);
+		}
 	}
 
 	public Map<Element, CandidateScore> getCandidates() {
@@ -527,8 +578,8 @@ public class ScoreVisitor2 {
 		return ("author".equals(rel) || AUTHOR.matcher(matchString).find()) && text.length() < 100;
 	}
 
-	private boolean hasSinglePInsideElement(Element element, Elements childs) {
-		if (childs.size() == 1 && "p".equals(childs.first().tagName())) {
+	private boolean hasSingleTagInsideElement(String tag, Element element, Elements childs) {
+		if (childs.size() == 1 && tag.equals(childs.first().tagName())) {
 			for (Node child : element.childNodes()) {
 				if (child instanceof TextNode) {
 					if (HAS_CONTENT.matcher(((TextNode) child).getWholeText()).matches()) {
@@ -556,6 +607,7 @@ public class ScoreVisitor2 {
 		ancestors.clear();
 		author = null;
 		date = null;
+		tags = null;
 	}
 
 	public void scoreUnlikes() {
@@ -563,9 +615,11 @@ public class ScoreVisitor2 {
 			final Element el = entry.getKey();
 			Element parent = entry.getValue();
 			parent.appendChild(el); // TODO add right position
-			author = null;
-			date = null;
-			ancestors.clear();
+			clear();
+			// author = null;
+			// date = null;
+			// tags = null;
+			// ancestors.clear();
 
 			for (int i = 0; i < 3 && parent != null; i++) {
 				ancestors.addFirst(parent);
@@ -575,15 +629,16 @@ public class ScoreVisitor2 {
 		}
 	}
 
-	// private boolean isElementWithoutContent(Element el) {
-	// if (!el.hasText()) {
-	// Elements child = el.children();
-	// return child.size() == 0
-	// || (child.size() == el.getElementsByTag("br").size() +
-	// el.getElementsByTag("hr").size());
-	// }
-	//
-	// return false;
-	// }
+	public Person getAuthor() {
+		return author;
+	}
+
+	public Date getDate() {
+		return date;
+	}
+
+	public Set<String> getTags() {
+		return tags;
+	}
 
 }

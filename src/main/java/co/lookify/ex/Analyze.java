@@ -7,10 +7,11 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.jsoup.Jsoup;
@@ -18,6 +19,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.TextNode;
 import org.jsoup.parser.Tag;
+import org.jsoup.safety.Whitelist;
 import org.jsoup.select.Elements;
 
 import co.lookify.link.CandidateScore;
@@ -25,6 +27,7 @@ import co.lookify.link.Flag;
 import co.lookify.structure.Block;
 import co.lookify.structure.MetaData;
 import co.lookify.structure.Page;
+import co.lookify.structure.Person;
 
 public class Analyze {
 	private static final Pattern META_NAME = Pattern.compile("\\s*((twitter)\\s*:\\s*)?(description|title)\\s*$",
@@ -45,6 +48,8 @@ public class Analyze {
 	private int curPageNum;
 
 	private int wordThreshold;
+
+	private int minConent = 100;
 
 	public Analyze() {
 		flag = new Flag();
@@ -143,23 +148,18 @@ public class Analyze {
 							return page;
 						}
 					} else {
-						processItems(uri, cleaner, listCandidates, candidates, page);
+						processItems(visitor, uri, cleaner, listCandidates, candidates, page);
 
 						break;
 					}
 				} else {
 					postProcessContent(uri, articaleContent);
+					addBlock(visitor, page, topCandidate, articaleContent);
 
-					final Block block = new Block();
-					block.setAuthor(topCandidate.getAuthor());
-					block.setDate(topCandidate.getDate());
-					block.setContent(articaleContent.html());
-					block.setDirection(topCandidate.getDirection());
-					page.addBlock(block);
 
 					final List<CandidateScore> listCandidates = selectListCandidates(sortedCandidates);
 					if (listCandidates != null) {
-						processItems(uri, cleaner, listCandidates, candidates, page);
+						processItems(visitor, uri, cleaner, listCandidates, candidates, page);
 					}
 
 					break;
@@ -171,20 +171,67 @@ public class Analyze {
 		return page;
 	}
 
-	private void processItems(final URI uri, final Cleaner cleaner, final List<CandidateScore> listCandidates,
+	private void addBlock(ScoreVisitor2 visitor, Page page, CandidateScore candidate, Element content) {
+		Person author = candidate.getAuthor();
+		Date date = candidate.getDate();
+		String dir = candidate.getDirection();
+		Set<String> tags = candidate.getTags();
+		if (author == null || date == null || tags == null) {
+			List<Element> list = visitor.getRemovedElements(candidate.getElement());
+			for (Element child : list) {
+				Elements elements = child.children();
+				for (Element sub : elements) {
+					visitor.traverse(sub);
+					if (author == null) {
+						author = visitor.getAuthor();
+					}
+					if (date == null) {
+						date = visitor.getDate();
+					}
+					if (tags == null) {
+						tags = visitor.getTags();
+					}
+				}
+				if (author != null && date != null && tags != null) {
+					break;
+				}
+			}
+		}
+		final Block block = new Block();
+		block.setAuthor(author);
+		block.setDate(date);
+		block.setDirection(dir);
+		block.setTags(tags);
+		block.setEl(content);
+		
+		Element cleanText = cleanContent(content, Whitelist.basic());
+		block.setContent(cleanText.html());
+		page.addBlock(block);
+	}
+	
+	private Element cleanContent(Element content, Whitelist whiltelist) {
+		Document dirt = Document.createShell("");
+		dirt.body().appendChild(content);
+		org.jsoup.safety.Cleaner cleaner = new org.jsoup.safety.Cleaner(whiltelist);
+        Document clean = cleaner.clean(dirt);
+		return clean.body();
+	}
+	
+	private void processItems(final ScoreVisitor2 visitor, final URI uri, final Cleaner cleaner, final List<CandidateScore> listCandidates,
 			final Map<Element, CandidateScore> candidates, final Page page) throws URISyntaxException {
 		for (CandidateScore item : listCandidates) {
 			final Element itemContent = makeArticleContent(item, candidates);
 			cleaner.prepArticle(null, itemContent);
-			if (itemContent.text().length() >= 100) {
+			if (itemContent.text().length() >= minConent ) {
 				postProcessContent(uri, itemContent);
-
-				final Block block = new Block();
-				block.setAuthor(item.getAuthor());
-				block.setDate(item.getDate());
-				block.setContent(itemContent.html());
-				block.setDirection(item.getDirection());
-				page.addBlock(block);
+				addBlock(visitor, page, item, itemContent);
+				
+//				final Block block = new Block();
+//				block.setAuthor(item.getAuthor());
+//				block.setDate(item.getDate());
+//				block.setContent(itemContent.html());
+//				block.setDirection(item.getDirection());
+//				page.addBlock(block);
 			}
 		}
 	}
@@ -462,31 +509,32 @@ public class Analyze {
 			}
 		}
 
-		return articaleContent;
+		Element cleanArticle = cleanContent(articaleContent, Whitelist.relaxed());
+		return cleanArticle;
 	}
 
-	private List<CandidateScore> filterTopCandidates(Map<Element, Double> candidates) {
-		LinkedList<CandidateScore> topCandidates = new LinkedList<>();
-		for (Map.Entry<Element, Double> entry : candidates.entrySet()) {
-			Element candidate = entry.getKey();
-			double score = entry.getValue();
-
-			for (int t = 0; t < nbTopCandidates; t++) {
-				CandidateScore topCandidate = t < topCandidates.size() ? topCandidates.get(t) : null;
-				if (topCandidate == null || score > topCandidate.getScore()) {
-					CandidateScore elementScore = new CandidateScore(candidate, score);
-					topCandidates.addFirst(elementScore);
-
-					if (topCandidates.size() > nbTopCandidates) {
-						topCandidates.pollLast();
-					}
-
-					break;
-				}
-			}
-		}
-		return topCandidates;
-	}
+//	private List<CandidateScore> filterTopCandidates(Map<Element, Double> candidates) {
+//		LinkedList<CandidateScore> topCandidates = new LinkedList<>();
+//		for (Map.Entry<Element, Double> entry : candidates.entrySet()) {
+//			Element candidate = entry.getKey();
+//			double score = entry.getValue();
+//
+//			for (int t = 0; t < nbTopCandidates; t++) {
+//				CandidateScore topCandidate = t < topCandidates.size() ? topCandidates.get(t) : null;
+//				if (topCandidate == null || score > topCandidate.getScore()) {
+//					CandidateScore elementScore = new CandidateScore(candidate, score);
+//					topCandidates.addFirst(elementScore);
+//
+//					if (topCandidates.size() > nbTopCandidates) {
+//						topCandidates.pollLast();
+//					}
+//
+//					break;
+//				}
+//			}
+//		}
+//		return topCandidates;
+//	}
 
 	private CandidateScore selectBestCandidate(final Map<Element, CandidateScore> candidates,
 			final List<CandidateScore> topCandidates, final Element body) {
@@ -602,39 +650,9 @@ public class Analyze {
 		}
 		return ancestors;
 	}
-
-	public static void main(String[] args) throws IOException, URISyntaxException {
-		Analyze read = new Analyze();
-		// "test.html");//
-		// Page page =
-		// read.parse("https://news.ycombinator.com/item?id=15601729");
-		// System.out.println(page.getFirstBlockContent());
-
-		// print(read, "https://news.ycombinator.com/item?id=15601729");
-		// print(read,
-		// "https://techcrunch.com/2017/10/21/chatterbug-language-learning/");
-		// print(read,
-		// "http://rus.delfi.lv/news/daily/abroad/foto-tancy-s-fidzhi-kity-i-meduzy-na-konferencii-po-klimatu-v-bonne.d?id=49417419");
-		// print(read, "https://techcrunch.com/");
-		print(read, "techcrunch.com.htm");
+	
+	public void setMinConent(int minConent) {
+		this.minConent = minConent;
 	}
 
-	private static void print(Analyze read, String url) throws IOException, URISyntaxException {
-		final Page page = read.parse(url);
-
-		System.out.println("Title: " + page.getTitle());
-
-		final List<Block> blocks = page.getBlocks();
-
-		if (blocks != null && !blocks.isEmpty()) {
-			System.out.println("====================================");
-			for (Block block : blocks) {
-				System.out.println("id: " + block.getId());
-				System.out.println("header: " + block.getHeader());
-				System.out.println("author: " + block.getAuthor());
-				System.out.println(block.getContent());
-				System.out.println("====================================");
-			}
-		}
-	}
 }

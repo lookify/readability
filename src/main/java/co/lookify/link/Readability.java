@@ -1219,7 +1219,7 @@ public class Readability {
 
 	public static void main(String[] args) throws IOException, URISyntaxException {
 		Readability read = new Readability();
-		Page page = read.parse("https://news.ycombinator.com/item?id=15601729"); // "https://techcrunch.com/2017/11/01/zuck-may-support-ad-regulation/");
+		Page page = read.parse("https://99bitcoins.com/buy-dogecoin/");
 		System.out.println(page.getFirstBlockContent());
 	}
 }

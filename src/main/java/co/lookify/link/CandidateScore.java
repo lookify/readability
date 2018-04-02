@@ -1,6 +1,7 @@
 package co.lookify.link;
 
 import java.util.Date;
+import java.util.Set;
 
 import org.jsoup.nodes.Element;
 
@@ -16,6 +17,8 @@ public class CandidateScore {
 	private Person author;
 
 	private String direction;
+
+	private Set<String> tags;
 
 	private double score;
 
@@ -66,6 +69,14 @@ public class CandidateScore {
 
 	public void setTitle(String title) {
 		this.title = title;
+	}
+
+	public Set<String> getTags() {
+		return tags;
+	}
+
+	public void setTags(Set<String> tags) {
+		this.tags = tags;
 	}
 
 	@Override
