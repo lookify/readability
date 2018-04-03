@@ -352,6 +352,18 @@ public class Analyze {
 		}
 
 		metaData.setTitle(title);
+		
+		Map<String, String> feeds = new HashMap<>();
+		Elements links = doc.select("link[rel=alternate]");
+		for (Element link : links) {
+			String type = link.attr("type");
+			String href = link.attr("href");
+			if ("application/rss+xml".equals(type) && href != null) {
+				String feedTitle = link.attr("title");
+				feeds.put(feedTitle == null ? type : feedTitle, href);
+			}
+		}
+		metaData.setFeeds(feeds);
 
 		return metaData;
 	}

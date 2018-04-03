@@ -46,7 +46,8 @@ public class Readability {
 	private static final Pattern OK_MAYBE_ITS_CANDIDATE = Pattern.compile("and|article|body|column|main|shadow",
 			Pattern.CASE_INSENSITIVE);
 
-//	private static final Pattern NORMALIZE = Pattern.compile("\\s{2,}", Pattern.MULTILINE);
+	// private static final Pattern NORMALIZE = Pattern.compile("\\s{2,}",
+	// Pattern.MULTILINE);
 
 	private static final Pattern POSITIVE = Pattern.compile(
 			"article|body|content|entry|hentry|h-entry|main|page|pagination|post|text|blog|story",
@@ -316,9 +317,9 @@ public class Readability {
 			final List<CandidateScore> topCandidates = filterTopCandidates(candidates);
 			final CandidateScore topCandidate = selectBestCandidate(topCandidates, body);
 			/*
-			 * boolean afterCandidate = false; for(CandidateScore candidate :
-			 * candidates) { if(topCandidate == candidate) { afterCandidate =
-			 * true; } else if(afterCandidate) { System.out.println(); } }
+			 * boolean afterCandidate = false; for(CandidateScore candidate : candidates) {
+			 * if(topCandidate == candidate) { afterCandidate = true; } else
+			 * if(afterCandidate) { System.out.println(); } }
 			 */
 			final Element articaleContent = makeArticleContent(topCandidate);
 			prepArticle(meta, articaleContent);
@@ -1036,7 +1037,6 @@ public class Readability {
 						values.put(name, content.trim());
 					}
 				}
-
 			}
 		}
 
@@ -1060,6 +1060,18 @@ public class Readability {
 		}
 
 		metaData.setTitle(title);
+
+		Map<String, String> feeds = new HashMap<>();
+		Elements links = doc.select("link[rel='alternate']");
+		for (Element link : links) {
+			String type = link.attr("type");
+			String href = link.attr("href");
+			if ("application/rss+xml".equals(type) && href != null) {
+				String feedTitle = link.attr("title");
+				feeds.put(feedTitle == null ? type : feedTitle, href);
+			}
+		}
+		metaData.setFeeds(feeds);
 
 		return metaData;
 	}
