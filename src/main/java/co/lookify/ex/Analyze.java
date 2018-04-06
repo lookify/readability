@@ -50,6 +50,8 @@ public class Analyze {
 	private int wordThreshold;
 
 	private int minConent = 100;
+	
+	private final PoolHttpConnectionManager pool;
 
 	public Analyze() {
 		flag = new Flag();
@@ -57,6 +59,7 @@ public class Analyze {
 		nbTopCandidates = 5;
 		curPageNum = 1;
 		wordThreshold = 500;
+		pool = new PoolHttpConnectionManager();
 	}
 
 	public Page parse(final String url) throws IOException, URISyntaxException {
@@ -67,10 +70,8 @@ public class Analyze {
 		final boolean file = schema == null || "file".equals(schema);
 		if (file) {
 			doc = Jsoup.parse(new File(url), StandardCharsets.UTF_8.name());
-			
-			// canonical
 		} else {
-			doc = Jsoup.connect(url).get();
+			doc = pool.connect(url).get();
 		}
 		
 		final ScoreVisitor2 visitor = new ScoreVisitor2(uri, score, flag);
