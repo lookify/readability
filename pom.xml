@@ -14,7 +14,7 @@
 	<groupId>co.lookify</groupId>
 	<artifactId>readability</artifactId>
 	<packaging>jar</packaging>
-	<version>1.6-SNAPSHOT</version>
+	<version>1.6</version>
 	
 	<parent>
 		<groupId>org.sonatype.oss</groupId>
@@ -108,7 +108,7 @@
 		<url>https://github.com/lookify/readability</url>
 		<connection>scm:git:https://github.com/lookify/readability.git</connection>
 		<developerConnection>scm:git:ssh://git@github.com/lookify/readability.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>readability-1.6</tag>
   </scm>
 	<developers>
         <developer>
