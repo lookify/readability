@@ -15,7 +15,8 @@
 	<artifactId>readability</artifactId>
 	<packaging>jar</packaging>
 	<version>1.7-SNAPSHOT</version>
-	
+	<name>Readability</name>
+	<description>Parse an HTML document to get readable content</description>
 	<parent>
 		<groupId>org.sonatype.oss</groupId>
 		<artifactId>oss-parent</artifactId>
