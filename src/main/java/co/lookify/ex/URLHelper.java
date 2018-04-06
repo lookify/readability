@@ -64,16 +64,30 @@ public final class URLHelper {
 		if (start == '/') {
 			return sb + url;
 		}
-
+		
+		int k = 0;
+		String[] urlParts = url.split("/");
+		int startSegment = ".".equals(urlParts[0]) ? 1 : 0;
+		for(int i = startSegment; i < urlParts.length; i++) {
+			if("..".equals(urlParts[i])) {
+				k++;
+			} else {
+				break;
+			}
+		}
+		
 		String path = uri.getPath();
-		if (path != null) {
-			sb.append(path);
+		if(path != null && path.length() > 0) {
+			String[] pathParts = path.split("/");
+			for(int i = 0; i < pathParts.length - k; i++) {
+				sb.append("/");
+				sb.append(pathParts[i]);	
+			}
 		}
-
-		if (url.startsWith("./")) {
-			return sb + url.substring(2);
+		for(int i = startSegment + k; i < urlParts.length; i++) {
+			sb.append("/");
+			sb.append(urlParts[i]);
 		}
-
-		return sb + url;
+		return sb.toString();
 	}
 }
