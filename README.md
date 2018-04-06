@@ -1,6 +1,12 @@
 # Readability
 Readable text extraction from HTML
-
+```
+<dependency>
+    <groupId>co.lookify</groupId>
+    <artifactId>readability</artifactId>
+    <version>1.4</version>
+</dependency>
+```
 ## License
 
     Copyright (c) 2018 Vertex IT SIA
